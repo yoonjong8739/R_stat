@@ -62,7 +62,7 @@ outlierTest(sprays.aov)
 # 귀무가설 : 집단 간 분산이 동일하다(등분산이다).
 # 대립가설 : 집단 간 분산이 동일하지 않다(등분산이 아니다).(채택)
 leveneTest(count ~ spray, data = InsectSprays)
-
+bartlett.test(count ~ spray, data = InsectSprays)
 
 ## 등분산 가정을 충족하지 못할 때 일원분산분석 수행 ##
 oneway.test(count ~ spray, data = InsectSprays) # Welch’s ANOVA
