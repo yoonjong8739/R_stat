@@ -68,9 +68,28 @@ model.mediation <- mediate(model.m = model.M,  # 매개변수 모델
 summary(model.mediation)
 plot(model.mediation, cex=1.2, col="royalblue", lwd=2, main="Mediation Effect Analysis")
 
-
 # 조절효과분석
 # 조절변수: 두 변수 간 관계를 강화시킬 수도, 약화시킬 수도 있음.
 # 조절효과 = 상호작용효과
 # M이 X와 Y 관계를 강화 또는 약화시키는 조건
 # 언제 어떤 조건에서 X가 Y에 영향을 미치는가?
+mtcars.lm <- lm(mpg ~ hp + wt + hp:wt, data = mtcars)
+summary(mtcars.lm) # hp와 wt 사이에 상호작용이 존재함. 즉, hp와 mpg 간의 관계 패턴은 wt에 따라 변동됨.
+
+# 상호작용효과 확인
+library(effects)
+m <- round(mean(mtcars$wt), 1); m
+s <- round(sd(mtcars$wt), 1); s
+plot(effect(term = "hp:wt", mod = mtcars.lm, xlevels=list(wt = c(m-s, m, m+s))),
+     lines = list(multiline = T, lwd = 2, lty = c(3, 2, 1),
+                  col = c("royalblue", "violet", "maroon")),
+     main = "Interaction Plot for Horsepower and Weight")
+
+#install.packages("rockchalk")
+library(rockchalk)
+plotSlopes(model = mtcars.lm, # 조절효과 회귀모델
+           plotx = "hp",      # 독립변수
+           modx = "wt",       # 조절변수
+           modxVals = "std.dev", # 평균에서 1 표준편차만큼 떨어진 값일 때의 회귀선
+           pch = 21, col = rainbow(3), cex = 1, bg = "dimgray",
+           main = "Interaction Plot for Horsepower and Weight")
