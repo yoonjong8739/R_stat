@@ -93,3 +93,38 @@ plotSlopes(model = mtcars.lm, # 조절효과 회귀모델
            modxVals = "std.dev", # 평균에서 1 표준편차만큼 떨어진 값일 때의 회귀선
            pch = 21, col = rainbow(3), cex = 1, bg = "dimgray",
            main = "Interaction Plot for Horsepower and Weight")
+
+# 조절내개효과분석
+# 매개변수에 의해 매개된 두 변수(독립,종속) 간 직접적 또는 간접적 영향관계에 제4의 변수(조절변수)가 영향을 미치는지 검정
+# 훈련기간(독립), 취업기회(종속), 기술습득(매개), 자기효능감(조절)
+
+# 조절매개효과분석은 매개효과와 조절효과를 동시에 검정한다.
+model.M <- lm(wt ~ disp*am, data = mtcars) # 매개변수모델(X -> M) + 조절변수
+model.Y <- lm(mpg ~ disp*am + wt*am, data = mtcars) # 종속변수모델(X+M -> Y) + 조절변수
+
+library(mediation)
+set.seed(12)
+model.med1 <- mediate(model.m = model.M, model.y = model.Y, covariates = list(am = 0),
+                       treat = "disp", mediator = "wt", boot = T, sims = 500)
+summary(model.med1)
+
+set.seed(12)
+model.med2 <- mediate(model.m = model.M, model.y = model.Y, covariates = list(am = 1),
+                       treat = "disp", mediator = "wt", boot = T, sims = 500)
+summary(model.med2)
+
+# 간접효과의 차이가 통계적으로 유의한지 검정
+# 1. 상호적용항이 포함된 매개변수모델과 종속변수모델로 매개효과분석 수행
+set.seed(12)
+model.med <- mediate(model.m = model.M, model.y = model.Y, 
+                     treat = "disp", mediator = "wt", boot = T, sims = 500)
+
+# 2. test.modmed()로 매개효과모델에서의 조절효과를 검정
+set.seed(12)
+test.modmed(object = model.med, # 매개효과분석 결과
+            covariates.1 = list(am=0), # 조절변수 1수준
+            covariates.2 = list(am=1), # 조절변수 2수준
+            sims=500)
+
+# 배기량(disp)이 자동차 무게(wt)를 매개로 해서 연비(mpg)에 미치는 영향은 변속기 유형(am)에 따라 차이가 있다.
+# 배기량(disp)이 연비(mpg)에 미치는 직접적인 영향은 변속기 유형(am)에 따라 차이가 없다.
