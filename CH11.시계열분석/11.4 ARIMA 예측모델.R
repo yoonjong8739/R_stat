@@ -43,6 +43,7 @@ head(dgoog200)
 
 plot(goog200, col = "cornflowerblue", lwd = 2, main = "(a) Google Stock Prices", xlab = "Day", ylab = "Dollars")
 plot(dgoog200, col = "salmon", lwd = 2, main = "(b) Google Stock Prices\nTransformed by Differencing", xlab = "Day", ylab = "Dollars")
+
 Acf(goog200, lwd = 2, main = "Original Data")
 Acf(dgoog200, lwd = 2, main = "Differenced Data")
 
@@ -66,8 +67,88 @@ plot(diff(log(AirPassengers), differences = 1), col = "salmon", lwd = 2, main = 
 par(old.par)
 
 # ARMA 모델과 ARIMA 모델
+# 1) AR 모델: 시계열상의 과거 관측값을 이용하여 예측모델을 생성. 예측하고자 하는 특정 변수의 과거 관측값의 선형결합으로 해당 변수의 미래값을 예측.
+# 2) MA 모델: 과거 예측오차를 기반으로 예측모델을 구축.
 
+# ARIMA 모델
+# 1) 시계열 데이터의 정상성 평가(로그변환, 차분)
+# 2) 예측 모델 생성
+# 3) 예측 모델 평가와 예측(adf, Acf/Pacf, forecast)
 
+## 1. 시계열 데이터의 정상성 평가
+library(tseries)
+plot(Nile) # 전 기간에 걸쳐 분산 변동폭이 크지 않아 로그 변환 또는 제곱근 변환이 필요없어 보임.
+adf.test(Nile) # 귀무가설: 정상 시계열이 아니다. 대립가설: 정상 시계열이다.
 
+# 정상 시계열이 아니므로 '차분' 필요
+library(forecast)
+ndiffs(Nile) # 가장 적합한 차분 횟수: 1회
+dNile <- diff(Nile, differences = 1)
+adf.test(dNile) # 정상 시계열 확인
 
+plot(Nile, col = "darkviolet", lwd = 2, main = "Flow of the River Nile: Original", xlab = "Year", ylab = "Flow")
+plot(dNile, col = "dodgerblue", lwd = 2, main = "Flow of the River Nile: Differenced", xlab = "Year", ylab = "Differenced Flow")
 
+## 2. 예측모델 생성
+Acf(dNile, lwd = 2, main = "Autocorrelation for the River Nile") # 예측모델 파라미터 결정
+Pacf(dNile, lwd = 2, main = "Partial Autocorrelation for the River Nile")
+
+Acf(dNile, plot = F) # 시차 1이후 자기상관이 0이 됨.
+Pacf(dNile, plot = F) # 시차 2이후 자기상관이 0이 됨.
+# ARMA(2,0), ARMA(0, 1), ARMA(2,1) 등의 모델이 가능
+# 간명도의 원칙: 성능이 비슷한 경우, 파라미터 수가 적은 모델을 선택.
+
+Nile.arima <- arima(Nile, order = c(0,1,1)) # p=0, d(차분 횟수)=1, q=1
+Nile.arima
+accuracy(Nile.arima)
+
+## 3. 예측모델 평가와 예측
+# 잔차의 정규성 확인
+hist(Nile.arima$residuals, col = "mistyrose", prob = T,
+     main = "Histogram of Residuals", xlab = "Residuals")
+xfit <- seq(min(Nile.arima$residuals), max(Nile.arima$residuals), length.out = 40)
+yfit <- dnorm(xfit, mean = mean(Nile.arima$residuals), sd = sd(Nile.arima$residuals))
+lines(xfit, yfit, col = "tomato", lwd = 2)
+
+qqnorm(Nile.arima$residuals, pch = 21, col = "black", bg = "gold", main = "Q-Q Plot of Residuals")
+qqline(Nile.arima$residuals, col = "royalblue", lwd = 2)
+
+# 잔차의 독립성(자기상관 = 0) 확인
+# 귀무가설: 잔차는 자기상관이 0이다.(잔차는 독립적이다.)
+# 대립가설: 잔차는 자기상관이 0이 아니다. (잔차는 독립적이지 않다.)
+Box.test(Nile.arima$residuals, type = "Ljung-Box")
+Box.test(Nile.arima$residuals)
+
+Nile.arima.pred <- forecast(Nile.arima, h = 5)  # 향후 5년치 나일강 유량
+Nile.arima.pred
+
+plot(Nile.arima.pred, col = "darkgreen", lwd = 2, flty = 1, flwd = 3,
+     fcol = "royalblue", shadecols = c("mistyrose", "salmon"), # 80%, 95% 신뢰구간
+     main = "Forecast for Flow of the River Nile",
+     xlab = "Year", ylab = "Flow")
+
+# 계절성분과 모델 자동 선택
+library(forecast)
+gas # 1956년 ~ 1995년까지의 호주의 월별 가스 생산량 시계열 데이터
+
+gas.arima <- auto.arima(gas) # 계절 성분을 포함한 ARIMA 모델
+gas.arima
+arima(gas, order = c(2,1,1), seasonal = list(order = c(0,1,1), period = 12)) # auto.arima(gas)와 동일
+
+forecast(gas.arima, h = 5*12) # 향후 5년간 월별 가스 생산량
+plot(forecast(gas.arima, h = 5*12), col = "darkorange", lwd = 2,
+     flty = 1, flwd = 3, fcol = "orangered", shadecols = c("lavender", "skyblue"),
+     main = "Australian Monthly Gas Production", xlab = "Year", ylab = "Monthly Production")
+
+library(ggfortify)
+library(scales)
+autoplot(forecast(gas.arima, h = 5*12), ts.colour = "cornflowerblue", ts.size = 1,
+         predict.colour = "salmon", predict.linetype = "solid",
+         predict.size = 1, conf.int.fill = "tomato") +
+  scale_y_continuous(labels = comma) +
+  labs(x = "", y = "Monthly Production", title = "Australian Monthly Gas Production") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", size = 14),
+        axis.line = element_line(),
+        axis.ticks = element_line(),
+        axis.text.x = element_text(size = 10))
