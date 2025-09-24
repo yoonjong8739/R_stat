@@ -10,9 +10,11 @@
 
 library(survival)
 library(survminer)
+lung <- survival::lung
 head(lung)
 str(lung)
 lung$sex <- factor(lung$sex, levels = c(1,2), labels = c("Male", "Female"))
+head(lung)
 
 # Surv 객체 생성
 Surv(time = lung$time,    # 생존시간
